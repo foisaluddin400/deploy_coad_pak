@@ -1,0 +1,210 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Form, Input, Modal, Checkbox, message, Spin } from "antd";
+import { useRouter } from "next/navigation";
+
+
+import { useGetProfileQuery } from "@/redux/Api/userApi";
+import { toast } from "react-toastify";
+import { useLazySingleGetCouponQuery, usePostCheckoutMutation } from "@/redux/Api/subscriptionApi";
+
+const AddSubPlane = ({ openAddModal, setOpenAddModal, subscriptionId }) => {
+  const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const { data: profileData, isLoading: profileLoading } = useGetProfileQuery();
+
+  const role = profileData?.data?.role;
+  const [discountedPrice, setDiscountedPrice] = useState(null);
+
+  const [addCheckout] = usePostCheckoutMutation();
+  const [triggerCouponCheck, { data: singleCouponData, isFetching }] =
+    useLazySingleGetCouponQuery();
+  const router = useRouter();
+  const [selectedPrice, setSelectedPrice] = useState(null);
+  const [displayPrice, setDisplayPrice] = useState(null);
+
+  useEffect(() => {
+    const initialPrice = Array.isArray(subscriptionId?.price)
+      ? subscriptionId.price[0]
+      : subscriptionId?.price;
+    setSelectedPrice(initialPrice);
+    setDisplayPrice(initialPrice);
+    form.setFieldsValue({ price: initialPrice });
+  }, [subscriptionId, form]);
+
+  const handleCancel = () => {
+    form.resetFields();
+    setCouponCode("");
+    if (
+      Array.isArray(subscriptionId?.price) &&
+      subscriptionId.price.length > 0
+    ) {
+      setDiscountedPrice(subscriptionId.price[0]);
+    } else if (typeof subscriptionId?.price === "number") {
+      setDiscountedPrice(subscriptionId.price);
+    } else {
+      setDiscountedPrice(null);
+    }
+    setShowCoupon(false);
+    setOpenAddModal(false);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) {
+      toast.warning("Please enter a coupon code");
+      return;
+    }
+    try {
+      const res = await triggerCouponCheck({ couponCode }).unwrap();
+      if (res?.data) {
+        const discount = res.data.discount;
+        const newDisplayPrice =
+          selectedPrice - (selectedPrice * discount) / 100;
+        setDisplayPrice(newDisplayPrice);
+        toast.success(`Coupon applied! ${discount}% discount`);
+      } else {
+        toast.error("Invalid coupon code");
+        setDisplayPrice(selectedPrice);
+      }
+    } catch (error) {
+      toast.error("Invalid coupon code");
+      setDisplayPrice(selectedPrice);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        subscriptionId: subscriptionId?._id,
+        duration: subscriptionId?.duration,
+        price: String(selectedPrice),
+      };
+      setLoading(true);
+      if (couponCode && singleCouponData?.data) {
+        payload.couponCode = couponCode;
+      }
+      const res = await addCheckout(payload).unwrap();
+      if (res?.success) {
+        // redirect using Next.js router
+        window.location.href = `${res?.data}`;
+      }
+      setLoading(false);
+      handleCancel();
+    } catch (err) {
+      toast.error(err?.data?.message || "Something went wrong");
+      console.error("Checkout Failed:", err?.data?.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      centered
+      open={openAddModal}
+      onCancel={handleCancel}
+      footer={null}
+      width={450}
+    >
+      <div className="mt-4 mb-6">
+        <h2 className="text-center text-xl font-semibold mb-6">
+          Subscription: {subscriptionId?.duration === "1 Months" ? "1 Month" : subscriptionId?.duration}
+        </h2>
+
+        <Form form={form} onFinish={handleSubmit} layout="vertical">
+          <Form.Item
+            name="price"
+            label="Select Price"
+            rules={[{ required: true, message: "Please select a price" }]}
+          >
+            <select
+              className="w-full border px-3 py-2 rounded-md"
+              value={selectedPrice}
+              onChange={(e) => {
+                const price = e.target.value;
+                setSelectedPrice(price);
+                setDisplayPrice(price);
+              }}
+            >
+              <option value="">-- Select Price --</option>
+              {subscriptionId?.price?.map((p, index) => (
+                <option key={index} value={p}>
+                  ${p}
+                </option>
+              ))}
+            </select>
+          </Form.Item>
+
+          {displayPrice !== selectedPrice && (
+            <p className="mt-2 text-green-600">
+              Discounted Price: ${parseFloat(displayPrice).toFixed(2)}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between mb-2">
+            <label className="font-medium">Apply a coupon code</label>
+            <Checkbox
+              checked={showCoupon}
+              onChange={() => setShowCoupon(!showCoupon)}
+            />
+          </div>
+          {showCoupon &&
+            Array.isArray(subscriptionId?.price) &&
+            subscriptionId?.price?.length > 0 && (
+              <Form.Item name="couponCode" label="Coupon Code">
+                <div className="flex">
+                  <Input
+                    placeholder="Enter your coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    className="py-2 rounded-tl rounded-tr-none rounded-br-none rounded-bl"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="bg-[#0091FF] hover:bg-blue-600 rounded-tl-none rounded-tr rounded-br rounded-bl-none text-white px-4"
+                    disabled={isFetching}
+                  >
+                    {isFetching ? "Checking..." : "Apply"}
+                  </button>
+                </div>
+              </Form.Item>
+            )}
+
+          <div className="flex gap-4 mt-6">
+            <button
+              type="button"
+              className="w-full py-2 border border-red-400 text-red-500 rounded-md hover:bg-red-50"
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+
+            <button
+              className={`w-full py-2 bg-[#0091FF] text-white rounded-md hover:bg-blue-600 ${
+                loading
+                  ? "bg-blue-400 cursor-not-allowed"
+                  : "bg-[#3b82f6] hover:bg-blue-500"
+              }`}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Spin size="small" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                "Continue"
+              )}
+            </button>
+          </div>
+        </Form>
+      </div>
+    </Modal>
+  );
+};
+
+export default AddSubPlane;

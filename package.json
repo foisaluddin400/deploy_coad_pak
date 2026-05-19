@@ -1,0 +1,51 @@
+{
+  "name": "bd-calling-interview-task",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:4173": "next dev -H 0.0.0.0 -p 4173",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 4173",
+    "preview": "next start -H 0.0.0.0 -p 4173",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@react-google-maps/api": "^2.20.7",
+    "@reduxjs/toolkit": "^2.9.0",
+    "@splidejs/react-splide": "^0.7.12",
+    "antd": "^5.27.3",
+    "country-state-city": "^3.2.1",
+    "country-state-city-nextjs": "^10.0.0",
+    "dayjs": "^1.11.18",
+    "final-form": "^4.20.10",
+    "framer-motion": "^12.23.22",
+    "jodit-react": "^5.2.5",
+    "js-cookie": "^3.0.7",
+    "lucide-react": "^0.544.0",
+    "next": "14.2.35",
+    "react": "^18.2.0",
+    "react-country-state-city": "^1.1.12",
+    "react-dom": "^18.2.0",
+    "react-final-form": "^6.5.9",
+    "react-helmet": "^6.1.0",
+    "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.3.0",
+    "react-phone-input-2": "^2.15.1",
+    "react-redux": "^9.2.0",
+    "react-responsive-carousel": "^3.2.23",
+    "react-star-ratings": "^2.3.0",
+    "react-toastify": "^10.0.6",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "swiper": "^11.1.14"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "daisyui": "^4.12.13",
+    "eslint": "^8",
+    "eslint-config-next": "^14.2.5",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1"
+  }
+}

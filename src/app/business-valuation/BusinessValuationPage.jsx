@@ -1,0 +1,613 @@
+"use client";
+import React, { useEffect, useState } from "react";
+import {
+  Form,
+  Input,
+  Select,
+  Checkbox,
+  Button,
+  Upload,
+  message,
+  Spin,
+} from "antd";
+
+import ReactPhoneInput from "react-phone-input-2";
+
+import "react-phone-input-2/lib/style.css";
+import { UploadOutlined } from "@ant-design/icons";
+import { User, DollarSign } from "lucide-react";
+
+import { Country } from "country-state-city";
+
+import { useRouter } from "next/navigation";
+
+import Image from "next/image";
+import { toast } from "react-toastify";
+import Link from "next/link";
+import { useGetCategtoryQuery } from "@/redux/Api/categoryApi";
+import { useAddBusinessValuationMutation } from "@/redux/Api/veluationApi";
+
+const { Option } = Select;
+const BusinessValuationPage = () => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [countries, setCountries] = useState([]);
+  const { data: categorie, isLoading, isError } = useGetCategtoryQuery();
+  const [subCategories, setSubCategories] = useState([]);
+  const router = useRouter();
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [addBusinessValuation] = useAddBusinessValuationMutation();
+
+  const [contactNo, setContactNo] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(null);
+
+  const handleCountryChange = (value) => {
+    setSelectedCountry(value);
+
+    form.setFieldsValue({ state: undefined, city: undefined });
+  };
+  useEffect(() => {
+    setCountries(Country.getAllCountries());
+  }, []);
+  const MAX_FILE_SIZE = 9 * 1024 * 1024;
+
+  const beforeUpload = (file) => {
+    const isPDF = file.type === "application/pdf";
+    if (!isPDF) {
+      toast.error("Only PDF files are allowed.");
+    }
+    const isLt9M = file.size < MAX_FILE_SIZE;
+    if (!isLt9M) {
+      toast.error("File must be smaller than 9MB!");
+    }
+    return isPDF && isLt9M;
+  };
+
+  const handleCategoryChange = (value) => {
+    setSelectedCategory(value);
+    const category = categorie?.data?.find(
+      (cat) => cat?.categoryName === value
+    );
+    setSubCategories(category?.subCategories || []);
+    form.setFieldsValue({ subCategory: null });
+  };
+
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+
+      formData.append("ownerName", values.ownerName);
+      formData.append("businessName", values.businessName);
+      formData.append("businessType", values.businessType);
+      formData.append("email", values.email);
+      // formData.append("countryCode", values.countryCode);
+      formData.append("mobile", values.mobile);
+      formData.append("region", values.region);
+      formData.append("country", values.country);
+      formData.append("location", values.location);
+      formData.append("annualTurnover", values.annualTurnover);
+      formData.append("currency", values.currency);
+      formData.append("annualExpenses", values.annualExpenses);
+      formData.append("purpose", values.purpose);
+      formData.append("annualProfit", values.annualProfit);
+      formData.append("yearOfEstablishment", values.yearOfEstablishment);
+      formData.append("valueOfAsset", values.valueOfAsset);
+      formData.append("valueOfStock", values.valueOfStock);
+      formData.append("category", values?.category);
+      formData.append("subCategory", values?.subCategory);
+      formData.append("message", values.message);
+
+      const pdfFields = [
+        "plReport",
+        "equipmentList",
+        "businessProfile",
+        "businessImage",
+      ];
+      pdfFields.forEach((fieldName) => {
+        const fileList = values[fieldName];
+        if (fileList?.[0]) {
+          formData.append("pdfs", fileList[0].originFileObj);
+        }
+      });
+
+      const res = await addBusinessValuation(formData).unwrap();
+
+      toast.success(res.message || "Submitted successfully");
+      setLoading(false);
+      form.resetFields();
+      router.push("/business-valuation-submission");
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+      toast.error(error?.data?.error || "Submission failed");
+    }
+  };
+
+  useEffect(() => {
+    if (categorie?.data?.length) {
+      const defaultCategory = categorie?.data[0];
+      setSelectedCategory(defaultCategory?.categoryName);
+      setSubCategories(defaultCategory?.subCategories || []);
+      form.setFieldsValue({ category: defaultCategory?.categoryName });
+    }
+  }, [categorie, form]);
+
+  return (
+    <div className="container mx-auto px-5 pt-20 pb-10">
+      <div className="relative flex flex-col items-start gap-5 pl-5 mb-6">
+        <div className="absolute top-0 left-0 w-2 h-full bg-[#22C55E] z-[1] rounded-r-full"></div>
+
+        <div className="ml-5">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#0091FF] mb-4 leading-tight">
+            Get Your Business Valuations
+          </h1>
+        </div>
+      </div>
+      <p className="text-gray-700 mb-10 max-w-4xl">
+        Are you wondering what your business is really worth? Our professional
+        business valuation service provides an accurate and reliable assessment
+        of your company&apos;s true market value. This helps you set the right
+        asking price, attract qualified buyers, and maximize your returns.
+        Don&apos;t risk undervaluing your company. A certified business
+        valuation ensures your business is positioned correctly in the
+        market-saving time and improving your chances of a successful sale.
+        Simply submit the form below, and our team will review your details and
+        contact you with a custom quotation for your business valuation report.
+      </p>
+
+      <div className="flex items-center gap-2 mb-6">
+        <User className="h-5 w-5 text-green-500" />
+        <h3 className="text-lg font-semibold text-blue-600">
+          Owner & Business Information
+        </h3>
+      </div>
+
+      <Form
+        layout="vertical"
+        form={form}
+        onFinish={onFinish}
+        autoComplete="off"
+      >
+        <div className="md:grid grid-cols-2 gap-4">
+          <Form.Item
+            label="Owner Name"
+            name="ownerName"
+            rules={[{ required: true, message: "Please enter owner name" }]}
+          >
+            <Input className="py-3" placeholder="Enter Owner Name" />
+          </Form.Item>
+
+          <Form.Item
+            label="Business Name"
+            name="businessName"
+            rules={[{ required: true, message: "Please enter business name" }]}
+          >
+            <Input className="py-3" placeholder="Enter Business Name" />
+          </Form.Item>
+        </div>
+
+        <div className="md:grid grid-cols-2 gap-4">
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              { required: true, message: "Please enter email" },
+              { type: "email", message: "Invalid email address" },
+            ]}
+          >
+            <Input className="py-3" placeholder="Enter Your Email" />
+          </Form.Item>
+
+          <div className=" gap-4">
+            <Form.Item
+              label="Phone Number"
+              name="mobile"
+              required
+              rules={[
+                {
+                  required: true,
+                  message: "Please enter your phone number!",
+                },
+              ]}
+            >
+              <ReactPhoneInput
+                country={"us"}
+                value={contactNo}
+                onChange={(value) => setContactNo(value)}
+                inputStyle={{ width: "100%", height: "48px" }}
+              />
+            </Form.Item>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Country */}
+          <Form.Item
+            label="Select Your Country"
+            name="country"
+            rules={[{ required: true, message: "Please select your country!" }]}
+          >
+            <Select
+              placeholder="Select your country"
+              style={{ height: "48px" }}
+              showSearch
+              allowClear
+              onChange={handleCountryChange}
+              optionLabelProp="label"
+            >
+              {countries?.map((country) => (
+                <Select.Option
+                  key={country?.isoCode}
+                  value={country?.name}
+                  label={country?.name}
+                >
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src={`https://flagcdn.com/w20/${country?.isoCode.toLowerCase()}.png`}
+                      alt={country?.name}
+                      width={20}
+                      height={12}
+                      className="object-cover"
+                    />
+                    {country?.name}
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item label="Regions" name="region">
+            <Input className="py-3" placeholder="Enter Regions" />
+          </Form.Item>
+        </div>
+
+        <div className="md:grid grid-cols-2 gap-4"></div>
+
+        <Form.Item label="Location" name="location">
+          <Input style={{ height: "48px" }} placeholder="Enter Location" />
+        </Form.Item>
+
+        <div className="">
+          <Form.Item
+            label="Business Type"
+            name="businessType"
+            rules={[{ required: true, message: "Please input business Type!" }]}
+          >
+            <Select
+              style={{ height: "48px" }}
+              placeholder="Business Type"
+              className="w-full"
+            >
+              <Option>Select</Option>
+              <Option value="Franchise">Franchise</Option>
+              <Option value="Independent">Independent</Option>
+              <Option value="Startup">Startup</Option>
+              <Option value="Home-Based">Home-Based</Option>
+              <Option value="Online">Online</Option>
+              <Option value="Other">Other</Option>
+            </Select>
+          </Form.Item>
+        </div>
+
+        <div className="md:grid grid-cols-2 gap-4">
+          <Form.Item
+            label="Business Category"
+            name="category"
+            rules={[
+              { required: true, message: "Please select Business Category!" },
+            ]}
+          >
+            <Select
+              style={{ height: "48px" }}
+              placeholder="Select Category"
+              onChange={handleCategoryChange}
+              value={selectedCategory}
+            >
+              {categorie?.data?.map((cat) => (
+                <Option key={cat?._id} value={cat?.categoryName}>
+                  {cat?.categoryName}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {subCategories?.length > 0 && (
+            <Form.Item label="Sub Category" name="subCategory">
+              <Select
+                style={{ height: "48px" }}
+                placeholder="Select Sub Category"
+              >
+                {subCategories?.map((sub, i) => (
+                  <Option key={i} value={sub?.name}>
+                    {sub?.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 mb-6 mt-16">
+          <DollarSign className="h-5 w-5 text-green-500" />
+          <h3 className="text-lg font-semibold text-blue-600">
+            Financial Details
+          </h3>
+        </div>
+        <div className="md:grid grid-cols-2 gap-4">
+          <Form.Item
+            label="Annual Turnover"
+            name="annualTurnover"
+            rules={[
+              { required: true, message: "Please enter Annual Turnover" },
+            ]}
+          >
+            <Input
+              style={{ height: "48px" }}
+              placeholder="Enter Annual Turnover"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Currency"
+            name="currency"
+            rules={[{ required: true, message: "Please enter Currency" }]}
+          >
+            <Input className="py-3" placeholder="Enter Currency" />
+          </Form.Item>
+        </div>
+
+        <div className="md:grid grid-cols-2 gap-4">
+          <Form.Item
+            label="Year of Establishment"
+            name="yearOfEstablishment"
+            rules={[
+              { required: true, message: "Please enter Year of Establishment" },
+            ]}
+          >
+            <Input
+              style={{ height: "48px" }}
+              placeholder="Enter Year of Establishment"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Annual Expenses"
+            name="annualExpenses"
+            rules={[
+              { required: true, message: "Please enter Annual Expenses" },
+            ]}
+          >
+            <Input
+              style={{ height: "48px" }}
+              placeholder="Enter Annual Expenses"
+            />
+          </Form.Item>
+        </div>
+
+        <Form.Item label="Select the Purpose" name="purpose">
+          <Select style={{ height: "48px" }} placeholder="Select Purpose">
+            <Option value="Selling My Business">Selling My Business</Option>
+            <Option value="europBuying a Businesse">Buying a Business</Option>
+            <Option value="Attracting Investors / Raising Capital">
+              Attracting Investors / Raising Capital
+            </Option>
+            <Option value="Business Loan or Financing Requirement">
+              Business Loan or Financing Requirement
+            </Option>
+            <Option value="Mergers & Acquisitions (M&A)">
+              Mergers & Acquisitions (M&A)
+            </Option>
+            <Option value="Partnership Buy-In / Buy-Out">
+              Partnership Buy-In / Buy-Out
+            </Option>
+            <Option value="Legal or Compliance Requirement">
+              Legal or Compliance Requirement
+            </Option>
+            <Option value="Tax or Accounting Purposes">
+              Tax or Accounting Purposes
+            </Option>
+            <Option value="Succession or Exit Planning">
+              Succession or Exit Planning
+            </Option>
+            <Option value="General Business Valuation / Market Worth">
+              General Business Valuation / Market Worth
+            </Option>
+          </Select>
+        </Form.Item>
+
+        <div className="flex items-center gap-2 mb-6 mt-16">
+          <DollarSign className="h-5 w-5 text-green-500" />
+          <h3 className="text-lg font-semibold text-blue-600">
+            Valuation Input for Accuracy
+          </h3>
+        </div>
+
+        <div className="md:grid grid-cols-2 gap-4">
+          <Form.Item
+            label="Annual Profit"
+            name="annualProfit"
+            rules={[{ required: true, message: "Please enter Annual Profit" }]}
+          >
+            <Input
+              style={{ height: "48px" }}
+              placeholder="Enter Annual Profit"
+            />
+          </Form.Item>
+          <Form.Item
+            label="Value of Assets"
+            name="valueOfAsset"
+            rules={[
+              { required: true, message: "Please enter Value of Assets" },
+            ]}
+          >
+            <Input
+              style={{ height: "48px" }}
+              placeholder="Enter Value of Assets"
+            />
+          </Form.Item>
+        </div>
+        <Form.Item
+          label="Value of stock / Inventory"
+          name="valueOfStock"
+          rules={[
+            { required: true, message: "Please Value of Stack / Inventory" },
+          ]}
+        >
+          <Input
+            style={{ height: "48px" }}
+            placeholder="Enter Value of Stack / Inventory"
+          />
+        </Form.Item>
+        <div className="flex items-center gap-2 mb-6 mt-16">
+          <DollarSign className="h-5 w-5 text-green-500" />
+          <h3 className="text-lg font-semibold text-blue-600">
+            File Uploads (PDF Only - Max 9 MB Each)
+          </h3>
+        </div>
+        {/* File Upload Example */}
+        <div className="grid md:grid-cols-4 grid-cols-2 gap-4">
+          <Form.Item
+            label="P&L Report"
+            name="plReport"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+          >
+            <Upload
+              style={{ width: "100%" }}
+              beforeUpload={beforeUpload}
+              maxCount={1}
+              accept=".pdf"
+              listType="text"
+            >
+              <Button
+                style={{ width: "100%", height: "48px" }}
+                icon={<UploadOutlined />}
+              >
+                Upload PDF
+              </Button>
+            </Upload>
+          </Form.Item>
+
+          <Form.Item
+            label="Equipment List"
+            name="equipmentList"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+          >
+            <Upload
+              style={{ width: "100%" }}
+              beforeUpload={beforeUpload}
+              maxCount={1}
+              accept=".pdf"
+              listType="text"
+            >
+              <Button
+                style={{ width: "100%", height: "48px" }}
+                icon={<UploadOutlined />}
+              >
+                Upload PDF
+              </Button>
+            </Upload>
+          </Form.Item>
+
+          <Form.Item
+            label="Business Profile"
+            name="businessProfile"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+          >
+            <Upload
+              style={{ width: "100%" }}
+              beforeUpload={beforeUpload}
+              maxCount={1}
+              accept=".pdf"
+              listType="text"
+            >
+              <Button
+                style={{ width: "100%", height: "48px" }}
+                icon={<UploadOutlined />}
+              >
+                Upload PDF
+              </Button>
+            </Upload>
+          </Form.Item>
+
+          <Form.Item
+            label="Business Image (Combined PDF)"
+            name="businessImage"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+          >
+            <Upload
+              style={{ width: "100%" }}
+              beforeUpload={beforeUpload}
+              maxCount={1}
+              accept=".pdf"
+              listType="text"
+            >
+              <Button
+                style={{ width: "100%", height: "48px" }}
+                icon={<UploadOutlined />}
+              >
+                Upload PDF
+              </Button>
+            </Upload>
+          </Form.Item>
+        </div>
+
+        <Form.Item
+          label="Message"
+          name="message"
+          rules={[{ required: true, message: "Please message" }]}
+        >
+          <Input.TextArea placeholder="Enter message" />
+        </Form.Item>
+
+        <Form.Item name="consentEmail" valuePropName="checked">
+          <Checkbox>I agree to be contacted via email by PBSF</Checkbox>
+        </Form.Item>
+
+        <Form.Item
+          name="consentTerms"
+          valuePropName="checked"
+          rules={[
+            {
+              validator: (_, value) =>
+                value
+                  ? Promise.resolve()
+                  : Promise.reject(new Error("You must accept the terms")),
+            },
+          ]}
+        >
+          <Checkbox>
+            I accept the <Link href="/terms-and-conditions">Terms</Link> and{" "}
+            <Link href="/privacy-policy">Privacy Policy</Link>
+          </Checkbox>
+        </Form.Item>
+
+        <Form.Item>
+          <button
+            className={`w-[200px] py-3 rounded text-white flex justify-center items-center gap-2 transition-all duration-300 ${
+              loading
+                ? "bg-blue-400 cursor-not-allowed"
+                : "bg-[#3b82f6] hover:bg-blue-500"
+            }`}
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Spin size="small" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              "Submit"
+            )}
+          </button>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+};
+
+export default BusinessValuationPage;

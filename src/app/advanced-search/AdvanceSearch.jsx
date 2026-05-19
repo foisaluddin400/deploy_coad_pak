@@ -1,0 +1,288 @@
+
+'use client';
+
+import { Button, Form, Select, Space } from "antd";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // Replace react-router-dom useNavigate
+import { City, Country, State } from "country-state-city";
+
+import Image from "next/image"; // Import Image from next/image
+import { useGetCategtoryQuery } from "@/redux/Api/categoryApi";
+
+const { Option } = Select;
+
+const askingPrice = [
+  "Under $50K",
+  "$50K - $100K",
+  "$100K - $250K",
+  "$250K - $500K",
+  "$500K - $1M",
+  "Over $1M",
+];
+
+const businessType = [
+  "Franchise",
+  "Independent",
+  "Startup",
+  "Home-Based",
+  "Online",
+  "Other",
+];
+
+const ownerShipType = [
+  "Sole Proprietorship",
+  "Partnership",
+  "Corporation",
+  "LLC",
+  "Other",
+];
+
+export default function AdvanceSearch() {
+
+
+  const { data: categorie, isLoading, isError } = useGetCategtoryQuery();
+  const [form] = Form.useForm();
+  const [subCategories, setSubCategories] = useState([]);
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [countries, setCountries] = useState([]);
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [selectedState, setSelectedState] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const router = useRouter(); // Replace useNavigate with useRouter
+
+  const handleCategoryChange = (value) => {
+    setSelectedCategory(value);
+    const category = categorie?.data?.find(
+      (cat) => cat?.categoryName === value
+    );
+    setSubCategories(category?.subCategories || []);
+    form.setFieldsValue({ subCategory: null });
+  };
+
+  const handleSearch = (values) => {
+    // Filter out undefined, null, or empty values
+    const filteredValues = Object.fromEntries(
+      Object.entries(values).filter(
+        ([_, value]) => value !== undefined && value !== null && value !== ""
+      )
+    );
+
+    // Convert filtered values to query string
+    const params = new URLSearchParams(filteredValues).toString();
+    router.push(`/search?${params}`); // Replace navigate with router.push
+  };
+
+  useEffect(() => {
+    setCountries(Country.getAllCountries());
+  }, []);
+
+  const handleCountryChange = (value) => {
+    setSelectedCountry(value);
+    setStates(State.getStatesOfCountry(value));
+    setCities([]); // reset cities
+    form.setFieldsValue({ state: undefined, city: undefined });
+  };
+
+  const handleStateChange = (value) => {
+    const selectedStateObj = states.find((s) => s.name === value);
+    setSelectedState(selectedStateObj?.name);
+    setCities(
+      City.getCitiesOfState(selectedCountry, selectedStateObj?.isoCode)
+    );
+    form.setFieldsValue({ city: undefined });
+  };
+useEffect(() => {
+  if (categorie?.data?.length) {
+   
+    setSelectedCategory(null);
+    setSubCategories([]);
+  }
+}, [categorie?.data]);
+
+
+
+
+  return (
+    <div className="relative max-w-7xl mx-auto px-5 pt-20 pb-10 rounded-lg shadow-sm">
+      <div className="relative flex flex-col items-start gap-5 pl-5 mb-10">
+        <div className="absolute top-0 left-0 w-2 h-full bg-[#22C55E] z-[1] rounded-r-full"></div>
+
+        <div className="ml-5">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#0091FF] mb-6 leading-tight">
+            Advanced Search
+          </h1>
+          <p className="text-lg md:text-xl text-[#000000] leading-relaxed max-w-2xl">
+            Find the perfect business opportunity by applying detailed filters
+            to narrow down your search.
+          </p>
+        </div>
+      </div>
+
+      <Form form={form} onFinish={handleSearch} layout="vertical" className="">
+        <div className="">
+          <Form.Item label="Business Category" name="category">
+  <Select
+    style={{ height: "48px" }}
+    placeholder="Select Category"
+    onChange={handleCategoryChange}
+    allowClear
+    value={selectedCategory || undefined}
+  >
+    {categorie?.data?.map((cat) => (
+      <Option key={cat._id} value={cat?.categoryName}>
+        {cat?.categoryName}
+      </Option>
+    ))}
+  </Select>
+</Form.Item>
+
+          {subCategories?.length > 0 && (
+            <Form.Item label="Sub Category" name="subCategory">
+              <Select
+                style={{ height: "48px" }}
+                placeholder="Select Sub Category"
+                allowClear
+              >
+                {subCategories?.map((sub, i) => (
+                  <Option key={i} value={sub?.name}>
+                    {sub?.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <Form.Item
+            label="Select Your Country"
+            name="country"
+            rules={[{ required: true, message: "Please select your country!" }]}
+          >
+            <Select
+              placeholder="Select your country"
+              style={{ height: "48px" }}
+              showSearch
+              allowClear
+              onChange={handleCountryChange}
+              optionLabelProp="label"
+              filterOption={(input, option) =>
+                option?.label?.toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {countries?.map((country) => (
+                <Select.Option
+                  key={country?.isoCode}
+                  value={country?.isoCode}
+                  label={country?.name}
+                >
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src={`https://flagcdn.com/w20/${country?.isoCode.toLowerCase()}.png`}
+                      alt={country?.name}
+                      width={20} // Match w-5 (5 * 4 = 20px)
+                      height={12} // Match h-3 (3 * 4 = 12px)
+                      className="object-cover"
+                    />
+                    {country?.name}
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="Select State" name="state">
+            <Select
+              placeholder="Select your state"
+              style={{ height: "48px" }}
+              showSearch
+              allowClear
+              onChange={handleStateChange}
+              disabled={!selectedCountry}
+            >
+              {states?.map((state) => (
+                <Select.Option key={state?.isoCode} value={state?.name}>
+                  {state?.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="Select City" name="city">
+            <Select
+              placeholder="Select your city"
+              style={{ height: "48px" }}
+              showSearch
+              allowClear
+              disabled={!selectedState}
+            >
+              {cities?.map((city) => (
+                <Select.Option key={city?.name} value={city?.name}>
+                  {city?.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </div>
+
+        <Form.Item label="Asking Price" name="askingPrice">
+          <Select
+            placeholder="Select One"
+            allowClear
+            style={{ height: "50px" }}
+          >
+            {askingPrice?.map((priceRange) => (
+              <Option key={priceRange} value={priceRange}>
+                {priceRange}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="Business Type"
+          name="businessType"
+          className="col-span-2"
+        >
+          <Select
+            placeholder="Select One"
+            allowClear
+            style={{ height: "50px" }}
+          >
+            {businessType?.map((type) => (
+              <Option key={type} value={type}>
+                {type}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item label="Ownership Type" name="ownerShipType">
+          <Select
+            placeholder="Select One"
+            allowClear
+            style={{ height: "50px" }}
+          >
+            {ownerShipType?.map((type) => (
+              <Option key={type} value={type}>
+                {type}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item className="col-span-2">
+          <Space>
+            <Button
+              className="bg-[#0091FF] text-white font-bold py-4 px-6"
+              htmlType="submit"
+            >
+              Apply This Filter
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+}

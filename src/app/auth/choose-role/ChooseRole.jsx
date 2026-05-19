@@ -1,0 +1,77 @@
+'use client'
+
+import React, { useEffect } from 'react';
+import { Button } from 'antd';
+import { motion } from 'framer-motion';
+import Image from 'next/image';
+import img from '../../../../public/role-choose.png'; // adjust path
+import { useRouter } from 'next/navigation';
+
+function ChooseRole() {
+  const router = useRouter();
+
+  const data = [
+    { title: 'a Buyer', description: 'Find the perfect business to buy and connect directly with sellers.', state: 'Buyer' },
+    { title: 'a Seller', description: 'List your business today and reach thousands of serious buyers worldwide.', state: 'Seller' },
+    { title: 'a Broker', description: 'List multiple businesses, manage inquiries, and close deals faster with PBFS.', state: 'Broker' },
+    { title: 'a Franchise Seller', description: 'List your franchise, gain visibility, and connect with serious buyers in just a few clicks.', state: 'Francise Seller' },
+    { title: 'an Investor', description: 'Discover exclusive investment opportunities and connect with verified business sellers and idea listers worldwide.', state: 'Investor' },
+    { title: 'a Business Idea Lister', description: 'Turn your business concept into reality by showcasing it to global buyers and investors.', state: 'Business Idea Lister' },
+    { title: 'an Asset Seller', description: 'List and sell your business assets—equipment, inventory, or licenses—directly to serious buyers.', state: 'Asset Seller' },
+  ];
+
+  return (
+    <div className="container my-28 px-2 mx-auto">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold">
+          Choose <span className="text-[#172554] ">Your Role</span> to Get Started
+        </h1>
+        <p className="text-center text-base mt-4 mb-12">
+          Select the option that best describes you to personalize your experience.
+        </p>
+      </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+      >
+        {data.map((item, index) => (
+          <Card key={index} title={item.title} description={item.description} state={item.state} router={router} />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+export default ChooseRole;
+
+const Card = ({ title, description, state, router }) => {
+  return (
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0, y: 20, backdropFilter: 'blur(100px)' }}
+      whileInView={{ scale: 1, opacity: 1, y: 0, backdropFilter: 'blur(0px)' }}
+      transition={{ duration: 0.5 }}
+      className="flex items-center justify-center"
+    >
+      <div className="sm:w-3/5 w-full sm:block hidden h-[300px] relative">
+        <Image src={img} alt={title} fill style={{ objectFit: 'cover' }} />
+      </div>
+      <div className="sm:w-3/5 w-full h-[200px] mt-12 sm:mt-0 sm:h-full relative">
+        <div className="absolute backdrop-blur-sm border border-gray-200 bg-white shadow h-fit py-[42px] px-[20px] sm:right-20 flex items-start justify-center flex-col top-1/2 transform -translate-y-1/2 w-full rounded">
+          <h1 className="font-bold sm:text-4xl text-2xl">
+            Become {' '}
+            <span className="text-[#172554] font-bold sm:text-4xl text-2xl">{title}</span>
+          </h1>
+          <p className="text-black font-bold text-base">{description}</p>
+          <Button
+            onClick={() => router.push(`/auth/signUp?role=${encodeURIComponent(state)}`)}
+            className="mt-4 sm:px-12 sm:py-6 py-4 text-base bg-[#0091FF] text-white hover:!bg-[#0091FF]/80 hover:!text-white border-none font-semibold"
+          >
+            Sign up
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
